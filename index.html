@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>OmniBox — convert, download, verify</title>
+<meta name="description" content="Convert PDF, Word, Markdown, spreadsheets and images entirely in your browser. Generate downloader commands for any platform. Check API keys." />
+<meta name="theme-color" content="#0b0f14" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="OmniBox" />
+<style>
+  :root {
+    --bg: #0b0f14; --panel: #111823; --panel-2: #16202e; --line: #24313f;
+    --text: #e8eef6; --dim: #93a4b8; --accent: #ff6a00; --accent-dim: #b34a00;
+    --warn: #fbbf24; --bad: #f87171; --good: #34d399;
+    --radius: 14px; --pad: 16px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  a { color: var(--accent); }
+  header {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px var(--pad); padding-top: calc(12px + env(safe-area-inset-top));
+    background: rgba(11,15,20,.92); backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .logo { width: 34px; height: 34px; flex: none; border-radius: 10px; background: linear-gradient(145deg, #0f2b33, #0b0f14); border: 1px solid #1d4d59; display: grid; place-items: center; }
+  .logo svg { width: 22px; height: 22px; }
+  h1 { font-size: 17px; margin: 0; letter-spacing: .2px; }
+  h1 span { color: var(--dim); font-weight: 400; font-size: 12px; display: block; }
+  .spacer { flex: 1; }
+  nav { display: flex; gap: 6px; padding: 10px var(--pad) 0; }
+  nav button {
+    flex: 1; padding: 11px 8px; border-radius: 11px 11px 0 0; border: 1px solid var(--line); border-bottom: none;
+    background: var(--panel); color: var(--dim); font-size: 13.5px; font-weight: 600; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 52px;
+  }
+  nav button b { font-size: 16px; }
+  nav button[aria-selected="true"] { background: var(--panel-2); color: var(--text); box-shadow: inset 0 2px 0 var(--accent); }
+  main { padding: var(--pad); max-width: 900px; margin: 0 auto; }
+  section[hidden] { display: none; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--pad); margin-bottom: 14px; }
+  .card > h2 { margin: 0 0 4px; font-size: 15px; }
+  .card > p.hint, p.hint { color: var(--dim); font-size: 12.5px; margin: 4px 0 12px; }
+  .drop {
+    border: 1.5px dashed #2b3a4a; border-radius: var(--radius); padding: 26px 14px; text-align: center;
+    color: var(--dim); cursor: pointer; background: #0d141d; transition: border-color .15s, background .15s;
+  }
+  .drop.over { border-color: var(--accent); background: #241408; }
+  .drop b { color: var(--text); display: block; font-size: 15px; margin-bottom: 3px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .row.between { justify-content: space-between; }
+  .grow { flex: 1; min-width: 0; }
+  button.btn, a.btn {
+    appearance: none; border: 1px solid var(--line); background: var(--panel-2); color: var(--text);
+    padding: 10px 13px; border-radius: 10px; font-size: 13.5px; font-weight: 600; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px; min-height: 40px; text-decoration: none;
+  }
+  button.btn.primary { background: var(--accent); border-color: var(--accent); color: #1a0c00; }
+  button.btn.ghost { background: transparent; }
+  button.btn.danger { border-color: #7f1d1d; color: #fecaca; background: #2a1215; }
+  button.btn:disabled { opacity: .45; cursor: not-allowed; }
+  .field { display: block; margin-bottom: 12px; }
+  .field > span { display: block; font-size: 12.5px; color: var(--dim); margin-bottom: 5px; font-weight: 600; }
+  input[type=text], input[type=password], input[type=number], select, textarea {
+    width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--line);
+    background: #0d141d; color: var(--text); font-size: 16px; font-family: inherit;
+  }
+  textarea { min-height: 74px; font-size: 14px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  @media (max-width: 520px) { .grid2, .grid3 { grid-template-columns: 1fr; } }
+  .switch { display: flex; align-items: center; gap: 9px; padding: 9px 0; font-size: 13.5px; }
+  .switch input { width: auto; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { font-size: 11.5px; padding: 4px 9px; border-radius: 999px; background: #16202e; border: 1px solid var(--line); color: var(--dim); }
+  .chip.good { color: #bbf7d0; border-color: #14532d; background: #08210f; }
+  .chip.bad { color: #fecaca; border-color: #7f1d1d; background: #2a1215; }
+  .chip.warn { color: #fde68a; border-color: #78350f; background: #2a1e08; }
+  .file {
+    border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: var(--panel-2);
+  }
+  .file .name { font-weight: 600; font-size: 14px; word-break: break-all; }
+  .file .meta { color: var(--dim); font-size: 12px; margin: 3px 0 9px; }
+  .bar { height: 8px; border-radius: 999px; background: #0d141d; border: 1px solid var(--line); overflow: hidden; }
+  .bar > i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent-dim), var(--accent)); transition: width .2s; }
+  .note { font-size: 12.5px; color: var(--dim); border-left: 2px solid var(--line); padding-left: 10px; margin: 10px 0 0; }
+  .alert { font-size: 13px; padding: 10px 12px; border-radius: 10px; margin: 10px 0 0; border: 1px solid; }
+  .alert.info { border-color: #155e75; background: #06222b; color: #a5f3fc; }
+  .alert.warn { border-color: #78350f; background: #2a1e08; color: #fde68a; }
+  .alert.bad { border-color: #7f1d1d; background: #2a1215; color: #fecaca; }
+  .alert.good { border-color: #14532d; background: #08210f; color: #bbf7d0; }
+  pre.cmd {
+    background: #060a0f; border: 1px solid var(--line); border-radius: 10px; padding: 12px; overflow-x: auto;
+    font: 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: #c9f7ff; white-space: pre-wrap; word-break: break-word;
+  }
+  table.report { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+  table.report th, table.report td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.report th { color: var(--dim); font-weight: 600; width: 40%; }
+  details { border-top: 1px solid var(--line); padding: 10px 0 0; margin-top: 10px; }
+  details summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--accent); }
+  footer { color: var(--dim); font-size: 12px; text-align: center; padding: 18px var(--pad) 30px; }
+  .toast {
+    position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(20px);
+    background: #16202e; border: 1px solid var(--line); color: var(--text); padding: 11px 15px; border-radius: 11px;
+    font-size: 13.5px; opacity: 0; pointer-events: none; transition: .2s; z-index: 60; max-width: 90vw; text-align: center;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .sheet { position: fixed; inset: 0; background: rgba(4,7,10,.72); display: grid; place-items: end center; z-index: 50; }
+  .sheet > div { background: var(--panel); border-top: 1px solid var(--line); border-radius: 18px 18px 0 0; width: 100%; max-width: 900px; padding: 18px var(--pad) calc(20px + env(safe-area-inset-bottom)); max-height: 88vh; overflow: auto; }
+  @media (min-width: 700px) { .sheet { place-items: center; } .sheet > div { border-radius: 16px; } }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; }
+  .kv { display: grid; grid-template-columns: 1fr; gap: 4px; }
+  .muted { color: var(--dim); }
+  .tiny { font-size: 12px; }
+  .nowrap { white-space: nowrap; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo" aria-hidden="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#ff6a00" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 8.5 12 4l9 4.5v7L12 20l-9-4.5z"/><path d="M3 8.5 12 13l9-4.5M12 13v7"/>
+    </svg>
+  </div>
+  <h1>OmniBox<span>convert · download · verify — nothing leaves this device</span></h1>
+  <div class="spacer"></div>
+  <button class="btn ghost" id="about-btn" title="What this can and cannot do">?</button>
+</header>
+
+<nav role="tablist">
+  <button role="tab" aria-selected="true" data-tab="convert"><b>⇄</b>Convert</button>
+  <button role="tab" aria-selected="false" data-tab="download"><b>⤓</b>Download</button>
+  <button role="tab" aria-selected="false" data-tab="keys"><b>🔑</b>API keys</button>
+</nav>
+
+<main>
+  <!-- ============================================================ CONVERT -->
+  <section id="tab-convert">
+    <div class="card">
+      <h2>Drop files to convert</h2>
+      <p class="hint">PDF, Word, Markdown, text, HTML, spreadsheets, CSV, images and ZIP archives. Everything happens here — no upload, no server, works offline.</p>
+      <p class="hint"><b>Honest about the output:</b> a PDF rebuilt from Word is a faithful re-render, not a pixel-perfect clone — fonts substitute and complex layouts can move. Scanned PDFs have no text layer, so text export comes out empty and the app tells you so.</p>
+      <div class="drop" id="drop">
+        <b>Tap to choose files</b>
+        or drag them here · or paste with <span class="mono">Ctrl/⌘+V</span>
+      </div>
+      <input type="file" id="file-input" multiple hidden />
+      <div class="row" style="margin-top:12px">
+        <button class="btn ghost" id="paste-btn">Paste from clipboard</button>
+        <button class="btn ghost" id="clear-btn">Clear list</button>
+        <span class="chip" id="memory-chip" hidden></span>
+      </div>
+    </div>
+
+    <div class="card" id="options-card">
+      <h2>Output options</h2>
+      <p class="hint">These apply to the conversions that use them.</p>
+      <div class="grid3">
+        <label class="field"><span>Page size</span>
+          <select id="opt-pagesize">
+            <option value="a4" selected>A4</option>
+            <option value="letter">Letter</option>
+            <option value="legal">Legal</option>
+            <option value="a5">A5</option>
+          </select>
+        </label>
+        <label class="field"><span>Body text size</span>
+          <select id="opt-fontsize">
+            <option value="10">10 pt</option>
+            <option value="11" selected>11 pt</option>
+            <option value="12">12 pt</option>
+            <option value="13">13 pt</option>
+          </select>
+        </label>
+        <label class="field"><span>Spreadsheet rows per sheet</span>
+          <select id="opt-maxrows">
+            <option value="200">200</option>
+            <option value="500" selected>500</option>
+            <option value="2000">2000</option>
+          </select>
+        </label>
+      </div>
+      <label class="switch"><input type="checkbox" id="opt-pagebreak" /> Start each heading-1 section on a new page (Markdown/Text → PDF)</label>
+      <label class="switch"><input type="checkbox" id="opt-captions" /> Label each image with its filename (Images → PDF)</label>
+    </div>
+
+    <div id="file-list"></div>
+  </section>
+
+  <!-- =========================================================== DOWNLOAD -->
+  <section id="tab-download" hidden>
+    <div class="card">
+      <h2>Paste a link</h2>
+      <p class="hint">YouTube, Instagram, TikTok, X, Reddit, Vimeo… or any direct file/image URL.</p>
+      <label class="field"><span>Link</span>
+        <input type="text" id="dl-url" placeholder="https://www.youtube.com/watch?v=…" autocomplete="off" inputmode="url" />
+      </label>
+      <div class="row">
+        <button class="btn primary" id="dl-inspect">Inspect link</button>
+        <button class="btn ghost" id="dl-helper">Download helper script</button>
+      </div>
+      <div id="dl-verdict"></div>
+    </div>
+
+    <div class="card" id="dl-options" hidden>
+      <h2>Options</h2>
+      <div class="grid3">
+        <label class="field"><span>What to get</span>
+          <select id="dl-mode">
+            <option value="video" selected>Video (+ audio)</option>
+            <option value="audio">Audio only</option>
+          </select>
+        </label>
+        <label class="field"><span>Video quality</span>
+          <select id="dl-quality">
+            <option value="best" selected>Best available</option>
+            <option value="2160">2160p (4K)</option>
+            <option value="1440">1440p (2K)</option>
+            <option value="1080">1080p</option>
+            <option value="720">720p</option>
+            <option value="480">480p</option>
+            <option value="360">360p</option>
+            <option value="worst">Smallest file</option>
+          </select>
+        </label>
+        <label class="field"><span>Container</span>
+          <select id="dl-container">
+            <option value="mp4" selected>MP4 (most compatible)</option>
+            <option value="mkv">MKV (keeps everything)</option>
+            <option value="webm">WebM</option>
+            <option value="auto">Let the tool decide</option>
+          </select>
+        </label>
+        <label class="field" id="dl-audioformat-wrap" hidden><span>Audio format</span>
+          <select id="dl-audioformat">
+            <option value="mp3" selected>MP3</option>
+            <option value="m4a">M4A</option>
+            <option value="opus">Opus</option>
+            <option value="flac">FLAC (lossless)</option>
+            <option value="wav">WAV</option>
+          </select>
+        </label>
+        <label class="field" id="dl-bitrate-wrap" hidden><span>Audio quality</span>
+          <select id="dl-bitrate">
+            <option value="best" selected>Best (VBR)</option>
+            <option value="320">320 kbps</option>
+            <option value="256">256 kbps</option>
+            <option value="192">192 kbps</option>
+            <option value="128">128 kbps</option>
+          </select>
+        </label>
+        <label class="field"><span>Sign in as (for private posts)</span>
+          <select id="dl-cookies">
+            <option value="none" selected>No cookies</option>
+            <option value="chrome">Chrome</option>
+            <option value="firefox">Firefox</option>
+            <option value="edge">Edge</option>
+            <option value="brave">Brave</option>
+            <option value="safari">Safari</option>
+            <option value="chromium">Chromium</option>
+            <option value="opera">Opera</option>
+          </select>
+        </label>
+      </div>
+      <div class="grid3">
+        <label class="field"><span>Save into folder</span>
+          <input type="text" id="dl-outdir" placeholder="(current folder)" autocomplete="off" />
+        </label>
+        <label class="field"><span>Speed limit</span>
+          <input type="text" id="dl-limitrate" placeholder="e.g. 5M (empty = full speed)" autocomplete="off" />
+        </label>
+        <label class="field"><span>Subtitles</span>
+          <select id="dl-sublangs">
+            <option value="" selected>No subtitles</option>
+            <option value="en">English, embedded</option>
+            <option value="en,en-orig">English (incl. auto)</option>
+            <option value="hi">Hindi, embedded</option>
+            <option value="ta">Tamil, embedded</option>
+            <option value="es">Spanish, embedded</option>
+          </select>
+        </label>
+      </div>
+      <div class="chips">
+        <label class="switch"><input type="checkbox" id="dl-playlist" /> Whole playlist</label>
+        <label class="switch"><input type="checkbox" id="dl-thumb" checked /> Embed thumbnail</label>
+        <label class="switch"><input type="checkbox" id="dl-meta" checked /> Embed title/date</label>
+        <label class="switch"><input type="checkbox" id="dl-sponsor" /> Cut sponsor segments</label>
+      </div>
+
+      <h2 style="margin-top:16px">The command</h2>
+      <p class="hint">This is what actually downloads it. Copy it into a terminal, or run it through the helper script below.</p>
+      <pre class="cmd" id="dl-command">—</pre>
+      <div class="row">
+        <button class="btn primary" id="dl-copy">Copy command</button>
+        <button class="btn ghost" id="dl-copy-ps">Copy for PowerShell</button>
+        <button class="btn ghost" id="dl-copy-json">Copy as JSON (helper input)</button>
+      </div>
+      <div id="dl-direct"></div>
+    </div>
+
+    <div class="card">
+      <h2>Why can't the browser just download it?</h2>
+      <p class="hint" id="dl-why"></p>
+      <details>
+        <summary>How to run the helper (2 minutes)</summary>
+        <div class="tiny" style="color:var(--dim);line-height:1.7">
+          <p><b>1.</b> Install the two real tools: <span class="mono">yt-dlp</span> and <span class="mono">ffmpeg</span>.
+          On Android use <b>Termux</b>: <span class="mono">pkg install python ffmpeg &amp;&amp; pip install -U yt-dlp deno</span>.
+          On Windows: <span class="mono">winget install yt-dlp.yt-dlp Gyan.FFmpeg DenoLand.Deno</span>.
+          On macOS: <span class="mono">brew install yt-dlp ffmpeg deno</span>.</p>
+          <p><b>2.</b> Download <span class="mono">fetch.mjs</span> with the button above (Node 18+ is enough — no npm install).</p>
+          <p><b>3.</b> Paste the command from this page into a terminal, or run
+          <span class="mono">node fetch.mjs --json spec.json</span> using the JSON version above.</p>
+          <p><b>YouTube specifically:</b> install <span class="mono">deno</span>. Since 2026 yt-dlp needs a JavaScript runtime to solve YouTube's signature challenges; without it you get 403 errors and only low-quality formats.</p>
+        </div>
+      </details>
+      <details>
+        <summary>Downloading responsibly</summary>
+        <div class="tiny" style="color:var(--dim)">Download what you have the right to download — your own uploads, Creative Commons material, or content whose licence allows it. Respect each platform's terms and your local copyright law.</div>
+      </details>
+    </div>
+  </section>
+
+  <!-- =============================================================== KEYS -->
+  <section id="tab-keys" hidden>
+    <div class="card">
+      <h2>Check API keys</h2>
+      <p class="hint" id="keys-hint"></p>
+      <div class="row">
+        <button class="btn primary" id="keys-check-all">Check every entered key</button>
+        <button class="btn ghost" id="keys-copy">Copy report</button>
+        <button class="btn ghost" id="keys-clear">Forget all keys</button>
+      </div>
+      <label class="switch"><input type="checkbox" id="keys-remember" /> Remember keys on this device (localStorage)</label>
+    </div>
+    <div id="keys-list"></div>
+  </section>
+</main>
+
+<footer>
+  OmniBox · no server, no upload, no tracking · <span id="version">v1.0</span>
+</footer>
+
+<div class="toast" id="toast"></div>
+<div class="sheet" id="about-sheet" hidden>
+  <div>
+    <div class="row between"><h2 style="margin:0">What this is — and what it isn't</h2><button class="btn ghost" id="about-close">Close</button></div>
+    <div id="about-body" style="margin-top:12px"></div>
+  </div>
+</div>
+
+<script type="module" src="app/ui/app.js"></script>
+</body>
+</html>

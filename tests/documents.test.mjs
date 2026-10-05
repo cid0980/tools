@@ -106,7 +106,8 @@ print(len(r.pages), r.metadata.title, '|', 'MISSING:' + ','.join(missing) if mis
 });
 
 test('images are embedded with the right filters, and alpha becomes a soft mask', async () => {
-  if (!hasPil) return;
+  // needs both: PIL to make the fixtures, pypdf to inspect the result
+  if (!hasPil || !hasPypdf) return;
   const made = python(`from PIL import Image
 Image.new('RGB',(64,48),(200,30,30)).save(${JSON.stringify(join(tmp, 'photo.jpg'))}, quality=85)
 Image.new('RGB',(50,40),(10,200,200)).save(${JSON.stringify(join(tmp, 'flat.png'))})

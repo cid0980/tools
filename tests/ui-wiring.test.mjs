@@ -111,6 +111,72 @@ test('the manifest icons exist at the sizes it claims, including a maskable one'
 
 /* ---------------------------------------------------------------- indexing */
 
+test('nothing in the stylesheet can override the hidden attribute', () => {
+  // The bug this pins: .sheet { display: grid } beat the weak UA default for
+  // `hidden`, so the About overlay was on screen from load and its Close button
+  // could not dismiss it. Same trap for .field on the audio-only options.
+  // strip /* comments */ first — they contain braces-free prose that would
+  // otherwise end up glued to the selectors below
+  const style = (/<style[^>]*>([\s\S]*?)<\/style>/.exec(page)?.[1] || '').replace(/\/\*[\s\S]*?\*\//g, '');
+  ok(style.length > 500, `the page carries its own stylesheet (${style.length} chars)`);
+
+  // 1. there must be a global [hidden] rule, and it must use !important —
+  //    without it, document order decides and .sheet (line 119) beats it (line 54)
+  const hiddenRules = [...style.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+    .filter(([, sel]) => /(^|,)\s*\[hidden\]\s*($|,)/.test(sel.trim()));
+  ok(hiddenRules.length === 1, `exactly one global [hidden] rule (found ${hiddenRules.length})`);
+  const body = hiddenRules[0][2];
+  ok(/display:\s*none/.test(body), 'it sets display: none');
+  ok(/!important/.test(body), 'and it uses !important, or the cascade wins against it');
+
+  // 2. no other rule may fight it with an !important display of its own
+  const otherImportant = [...style.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+    .filter(([, sel]) => !/\[hidden\]/.test(sel))
+    .filter(([, , decl]) => /display:[^;]*!important/.test(decl));
+  deepEq(otherImportant.map(([, sel]) => sel.trim()), [], 'no competing !important display rules');
+
+  // 3. every element that carries `hidden` in the markup: find every simple
+  //    selector that would match it and set display (that is exactly the trap)
+  const hiddenElements = [...page.matchAll(/<([a-z]+)([^>]*)\shidden(?:\s|>)/gi)].map(([, tag, attrs]) => ({
+    tag,
+    id: /id="([^"]+)"/.exec(attrs)?.[1] || null,
+    classes: (/class="([^"]+)"/.exec(attrs)?.[1] || '').split(/\s+/).filter(Boolean),
+  }));
+  ok(hiddenElements.length >= 5, `the page hides ${hiddenElements.length} elements by attribute`);
+
+  const rules = [...style.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+    .flatMap(([, selector, decl]) => selector.split(',').map((sel) => ({ sel: sel.trim(), decl })))
+    .filter(({ sel }) => sel && !/[\s>+~]/.test(sel)) // simple selectors only: those are what set the element's own display
+    .filter(({ decl }) => /(^|;)\s*display:/.test(';' + decl));
+
+  const offenders = [];
+  for (const element of hiddenElements) {
+    for (const { sel, decl } of rules) {
+      const tag = /^[a-z]+/i.exec(sel)?.[0] || null;
+      const id = /#([\w-]+)/.exec(sel)?.[1] || null;
+      const cls = [...sel.matchAll(/\.([\w-]+)/g)].map((m) => m[1]);
+      const matches = (!tag || tag.toLowerCase() === element.tag.toLowerCase())
+        && (!id || id === element.id)
+        && cls.every((c) => element.classes.includes(c));
+      if (matches && !/\[hidden\]/.test(sel)) {
+        offenders.push(`${element.tag}${element.id ? '#' + element.id : ''} matched by "${sel}"`);
+      }
+    }
+  }
+  // These really do win the cascade, so the global guard is load-bearing, not decoration.
+  ok(offenders.length >= 1, `the guard is load-bearing — these class rules set display on hidden elements: ${offenders.join('; ')}`);
+  ok(hiddenRules.length === 1 && /!important/.test(hiddenRules[0][2]),
+    'and the guard is present and !important, so none of them can win');
+});
+
+test('the About sheet can always be dismissed', () => {
+  ok(/<div class="sheet" id="about-sheet" hidden>/.test(page), 'the sheet starts hidden');
+  ok(/\$\('about-close'\)\.addEventListener\('click'[^)]*\)\s*=>[^}]*hidden = true/.test(appJs)
+    || /about-close'\)\.addEventListener\('click', \(\) => \{ \$\('about-sheet'\)\.hidden = true/.test(appJs), 'the Close button hides it');
+  ok(/addEventListener\('keydown'[^)]*\).*Escape/s.test(appJs), 'Escape hides it too — belt and braces');
+  ok(/\$\('about-sheet'\)\.addEventListener\('click'[\s\S]{0,120}target === \$\('about-sheet'\)/.test(appJs), 'tapping the backdrop hides it');
+});
+
 test('the page is honest about what it cannot do', () => {
   const text = page.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');
   ok(/nothing leaves this device|no upload|never uploaded|stay on your device/i.test(text), 'says files are not uploaded');

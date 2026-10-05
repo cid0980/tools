@@ -7,7 +7,7 @@
  * a correctness bug, so it is never allowed to happen.
  */
 
-const VERSION = 'omnibox-v1';
+const VERSION = 'omnibox-v2'; // bump to purge stale caches (v1 shipped a page that [hidden] could not hide)
 const SHELL = [
   './',
   './index.html',
@@ -35,7 +35,11 @@ self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(VERSION);
     // add() one by one so a single missing file cannot abort the whole install
-    await Promise.all(SHELL.map((path) => cache.add(path).catch(() => null)));
+    // cache: 'reload' bypasses the HTTP cache. Without it, a returning user can be
+    // handed the *previous* index.html on the very install meant to replace it.
+    await Promise.all(SHELL.map((path) => fetch(new Request(path, { cache: 'reload' }))
+      .then((response) => { if (response.ok) return cache.put(path, response); })
+      .catch(() => null)));
     await self.skipWaiting();
   })());
 });

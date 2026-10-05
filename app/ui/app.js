@@ -521,6 +521,9 @@ const ABOUT = `
 $('about-btn').addEventListener('click', () => { $('about-body').innerHTML = ABOUT; $('about-sheet').hidden = false; });
 $('about-close').addEventListener('click', () => { $('about-sheet').hidden = true; });
 $('about-sheet').addEventListener('click', (e) => { if (e.target === $('about-sheet')) $('about-sheet').hidden = true; });
+// Escape always closes the sheet: a modal with no keyboard exit is how an overlay
+// becomes a dead end.
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('about-sheet').hidden = true; });
 
 /* ================================================================== startup */
 
